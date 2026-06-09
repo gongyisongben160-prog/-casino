@@ -1,111 +1,493 @@
-﻿/* 🎨 基本デザイン設定 */
-body { 
-    margin: 0; 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    background-color: #0f172a; 
-    color: white; 
-}
+document.addEventListener("DOMContentLoaded", () => {
+    
+    // 画面切り替えシステム
+    window.showPage = function(p) {
+        const pages = ['home', 'dice', 'mines', 'crash', 'limbo', 'wheel'];
+        pages.forEach(id => {
+            let el = document.getElementById(id + "Page");
+            if (el) el.style.display = id === p ? 'block' : 'none';
+        });
+        
+        document.querySelectorAll(".nav-btn").forEach(b => {
+            const pageAttr = b.getAttribute("data-page");
+            if (pageAttr === p) {
+                b.classList.add("active");
+            } else {
+                b.classList.remove("active");
+            }
+        });
+    };
 
+    // 初期ページ表示
+    window.showPage('home');
 
-/* 🕹️ ナビゲーションバー */
-.navbar { 
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 15px 20px; background-color: #1e293b; border-bottom: 2px solid #334155; 
-}
-.nav-menu { display: flex; gap: 10px; overflow-x: auto; }
-.nav-btn { 
-    background: #334155; color: white; border: none; 
-    padding: 10px 15px; border-radius: 5px; cursor: pointer; white-space: nowrap; font-weight: bold;
-}
-.nav-btn.active { background: #a855f7; }
-.nav-btn:hover:not(.active) { background: #475569; }
+    // ボタンにクリックイベントを紐付け
+    document.querySelectorAll(".nav-btn, .game-item").forEach(el => {
+        el.addEventListener("click", () => {
+            let page = el.getAttribute("data-page");
+            if (page) window.showPage(page);
+        });
+    });
 
+    // --- ゲームの基本データ ---
+    let balance = Number(localStorage.getItem("balance")) || 4000;
+    let xp = Number(localStorage.getItem("xp")) || 0;
+    let level = Number(localStorage.getItem("level")) || 1;
+    
+    let minesGame = { active: false, bet: 0, count: 0, bombs: [], gemsOpened: 0 };
+    let crashGame = { active: false, bet: 0, multiplier: 1.00, interval: null, crashPoint: 0 };
+    let wheelSpinning = false;
 
-.stats { display: flex; gap: 15px; align-items: center; }
-.balance-display { font-size: 1.2rem; font-weight: bold; color: #22c55e; }
-.xp-display { font-size: 0.9rem; color: #cbd5e1; }
+    function updateUI() {
+        document.getElementById("balance").textContent = balance.toLocaleString();
+        document.getElementById("xp").textContent = xp;
+        document.getElementById("level").textContent = level;
+        localStorage.setItem("balance", balance); localStorage.setItem("xp", xp); localStorage.setItem("level", level);
+    }
 
+    function showPopup(html) {
+        const p = document.getElementById("winPopup");
+        if(p) {
+            p.innerHTML = html; p.style.display = "block";
+            setTimeout(() => p.style.display = "none", 2000);
+        }
+    }
 
-/* 📦 メインコンテナ */
-.container { padding: 20px; max-width: 600px; margin: 0 auto; }
-.page { display: none; }
+    function addHistory(game, status, amount) {
+        const list = document.getElementById("historyList");
+        if(!list) return;
+        const color = status.includes("WIN") || status.includes("CASH") ? "#22c55e" : "#ef4444";
+        const item = document.createElement("div");
+        item.className = "hist-item";
+        item.innerHTML = `<span>${game}</span> <strong style="color:${color}">${status} (${amount})</strong>`;
+        list.insertBefore(item, list.firstChild);
+    }
 
+    function gainXP(amount) {
+        xp += amount;
+        if (xp >= 100) {
+            xp -= 100; level++;
+            showPopup(`<span style="color:#a855f7;">⭐ LEVEL UP! ⭐<br>Lv. ${level}</span>`);
+        }
+        updateUI();
+    }
 
-/* 🎛️ コントロール（入力欄とボタン） */
-.control-group { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; font-weight: bold; }
-input, select { 
-    width: 100%; padding: 10px; background: #0f172a; color: white; 
-    border: 1px solid #334155; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; 
-    font-size: 1rem;
-}
-.action-btn { 
-    width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; 
-    border: none; border-radius: 8px; cursor: pointer; 
-    background: #3b82f6; color: white; transition: 0.2s; 
-}
-.action-btn:hover { background: #2563eb; }
-.action-btn:disabled { background: #475569; cursor: not-allowed; }
-.cashout-btn { background: #22c55e; }
-.cashout-btn:hover { background: #16a34a; }
+    function setGlobalLock(locked) {
+        document.querySelectorAll(".nav-btn, .game-item").forEach(el => el.style.pointerEvents = locked ? "none" : "auto");
+        const inputs = ["bet", "chance", "minesBet", "mineCount", "crashBet", "limboBet", "limboTarget", "wheelBet", "wheelRisk", "wheelSegments", "rollBtn", "startLimboBtn", "startWheelBtn"];
+        inputs.forEach(id => {
+            let el = document.getElementById(id);
+            if(el) el.disabled = locked;
+        });
+    }
 
+    // --- HOME & PROMO ---
+    const claimBtn = document.getElementById("claimBtn");
+    if(claimBtn) {
+        claimBtn.onclick = () => { balance += 500; showPopup("🎁 Daily Bonus<br>+¥500"); updateUI(); };
+    }
 
-/* 🎲 Dice専用スタイル */
-.roll-display { font-size: 3.5rem; text-align: center; font-weight: bold; margin: 20px 0; color: white; }
-.dice-slider-container { position: relative; height: 10px; background: #334155; border-radius: 5px; margin: 40px 0 20px; }
-.dice-bar-fill { position: absolute; height: 10px; background: #22c55e; border-radius: 5px 0 0 5px; }
-.dice-pointer { position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: -5px; transform: translateX(-50%); }
+    const homePromoBtn = document.getElementById("homePromoBtn");
+    if(homePromoBtn) {
+        homePromoBtn.onclick = () => {
+            const code = document.getElementById("homePromoCode").value;
+            const msg = document.getElementById("homePromoMsg");
+            if (code === "kyo1_0507") { balance += 10000; msg.style.color = "#22c55e"; msg.textContent = "✅ Admin Code Applied! +¥10,000"; updateUI(); } 
+            else { msg.style.color = "#ef4444"; msg.textContent = "❌ Invalid Code"; }
+        };
+    }
 
+    // --- DICE ---
+    const chanceInput = document.getElementById("chance");
+    if(chanceInput) {
+        chanceInput.addEventListener("input", (e) => {
+            let val = e.target.value;
+            document.getElementById("barFill").style.width = val + "%";
+            document.getElementById("pointer").style.left = val + "%";
+            document.getElementById("rollDisplay").style.left = val + "%";
+            document.getElementById("rollDisplay").style.color = "#a855f7";
+            document.getElementById("rollDisplay").textContent = (val * 0.99).toFixed(2);
+            document.getElementById("chanceText").textContent = (val * 0.99).toFixed(2);
+            document.getElementById("payoutText").textContent = (99 / val).toFixed(2);
+        });
+    }
 
-/* 💣 Mines専用スタイル */
-.mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-.mine-tile { 
-    background: #334155; aspect-ratio: 1; border-radius: 8px; 
-    display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; transition: 0.2s; 
-}
-.mine-tile:hover { background: #475569; }
-.mine-tile.gem { background: #1e293b; cursor: default; }
-.mine-tile.bomb { background: #ef4444; cursor: default; }
-.mine-tile.revealed-bomb { background: #1e293b; opacity: 0.7; cursor: default; }
+    const rollBtn = document.getElementById("rollBtn");
+    if(rollBtn) {
+        rollBtn.addEventListener("click", async () => {
+            let bet = Number(document.getElementById("bet").value);
+            let chanceVal = Number(chanceInput.value);
+            if (bet > balance || bet <= 0) return;
 
+            setGlobalLock(true); balance -= bet; updateUI();
 
-/* 🚀 Crash専用スタイル */
-.crash-display-container { 
-    background: #1e293b; height: 250px; display: flex; align-items: center; justify-content: center; 
-    border-radius: 8px; margin-bottom: 20px; border: 2px solid #334155; text-align: center;
-}
-.crash-multiplier { font-size: 4rem; font-weight: bold; color: white; }
+            for (let i = 0; i < 12; i++) {
+                document.getElementById("rollDisplay").textContent = (Math.random() * 100).toFixed(2);
+                await new Promise(r => setTimeout(r, 60));
+            }
+            let roll = Math.random() * 100;
+            document.getElementById("rollDisplay").textContent = roll.toFixed(2);
+            document.getElementById("pointer").style.left = roll + "%";
+            document.getElementById("rollDisplay").style.left = roll + "%";
 
+            if (roll < (chanceVal * 0.99)) {
+                let win = Math.floor(bet * (99 / chanceVal)); balance += win;
+                document.getElementById("rollDisplay").style.color = "#22c55e";
+                showPopup(`×${(99 / chanceVal).toFixed(2)}<br>+¥${win}<br>WIN!`);
+                addHistory("Dice", "WIN", `+¥${win}`); gainXP(Math.max(5, Math.floor(bet / 10)));
+            } else {
+                document.getElementById("rollDisplay").style.color = "#ef4444";
+                addHistory("Dice", "LOSE", `-¥${bet}`);
+            }
+            updateUI(); setGlobalLock(false);
+        });
+    }
 
-/* 🎯 Limbo専用スタイル */
-.limbo-display { font-size: 4.5rem; font-weight: bold; text-align: center; margin: 30px 0; color: #a855f7;}
+    // --- MINES ---
+    const startMinesBtn = document.getElementById("startMinesBtn");
+    if(startMinesBtn) {
+        startMinesBtn.addEventListener("click", () => {
+            let bet = Number(document.getElementById("minesBet").value);
+            let count = Number(document.getElementById("mineCount").value);
+            if (bet > balance || bet <= 0 || count < 1 || count > 24) return;
 
+            setGlobalLock(true); startMinesBtn.disabled = true;
+            balance -= bet; updateUI();
 
-/* 🎡 Wheel専用スタイル */
-.wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 30px auto; }
-.wheel { width: 100%; height: 100%; border-radius: 50%; background: #334155; border: 5px solid #1e293b; box-sizing: border-box; }
-.wheel-pointer { 
-    position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
-    width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10;
-}
+            minesGame = { active: true, bet: bet, count: count, bombs: [], gemsOpened: 0 };
+            while (minesGame.bombs.length < minesGame.count) {
+                let b = Math.floor(Math.random() * 25);
+                if (!minesGame.bombs.includes(b)) minesGame.bombs.push(b);
+            }
 
+            const grid = document.getElementById("minesGrid"); grid.innerHTML = "";
+            document.getElementById("currentMult").textContent = "1.00";
 
-/* 📜 履歴とポップアップ */
-.history { margin-top: 30px; padding: 15px; background: #1e293b; border-radius: 8px; }
-.history h3 { margin-top: 0; color: #94a3b8; }
-.history-list { max-height: 200px; overflow-y: auto; }
-.hist-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+            for (let i = 0; i < 25; i++) {
+                let t = document.createElement("div"); t.className = "mine-tile";
+                t.onclick = () => {
+                    if (!minesGame.active || t.classList.contains("gem") || t.classList.contains("bomb")) return;
+                    if (minesGame.bombs.includes(i)) {
+                        t.className = "mine-tile bomb"; t.textContent = "💣"; minesGame.active = false;
+                        document.querySelectorAll('.mine-tile').forEach((tile, idx) => {
+                            if(minesGame.bombs.includes(idx)) { if(!tile.classList.contains("bomb")) tile.classList.add("revealed-bomb"); tile.textContent = "💣"; }
+                            else if(!tile.classList.contains("gem")) { tile.textContent = "💎"; tile.style.opacity = "0.3"; }
+                        });
+                        addHistory("Mines", "LOSE", `-¥${minesGame.bet}`);
+                        setGlobalLock(false); startMinesBtn.disabled = false;
+                        document.getElementById("cashoutBtn").style.display = "none";
+                    } else {
+                        t.className = "mine-tile gem"; t.textContent = "💎"; minesGame.gemsOpened++;
+                        let step = minesGame.count <= 3 ? 1.15 : 1.95;
+                        document.getElementById("currentMult").textContent = (1 + (minesGame.gemsOpened * (step - 1))).toFixed(2);
+                        document.getElementById("cashoutBtn").style.display = "block";
+                    }
+                };
+                grid.appendChild(t);
+            }
+        });
+    }
 
+    const cashoutBtn = document.getElementById("cashoutBtn");
+    if(cashoutBtn) {
+        cashoutBtn.onclick = () => {
+            if (!minesGame.active) return;
+            let step = minesGame.count <= 3 ? 1.15 : 1.95;
+            let mult = (1 + (minesGame.gemsOpened * (step - 1))).toFixed(2);
+            let win = Math.floor(minesGame.bet * mult); balance += win;
 
-#winPopup { 
-    position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-    background: rgba(15, 23, 42, 0.95); padding: 15px 30px; border-radius: 10px; 
-    border: 2px solid #a855f7; display: none; z-index: 1000; text-align: center; font-weight: bold; font-size: 1.2rem;
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
-}
+            showPopup(`×${mult}<br>+¥${win}<br>CASH OUT!`);
+            addHistory("Mines", "WIN", `+¥${win}`); gainXP(Math.max(10, Math.floor(minesGame.bet / 5)));
 
+            minesGame.active = false;
+            document.querySelectorAll('.mine-tile').forEach((tile, idx) => {
+                if(minesGame.bombs.includes(idx)) { tile.classList.add("revealed-bomb"); tile.textContent = "💣"; }
+            });
+            
+            setGlobalLock(false); if(startMinesBtn) startMinesBtn.disabled = false;
+            cashoutBtn.style.display = "none"; updateUI();
+        };
+    }
 
-.promo-box { display: flex; gap: 10px; margin-top: 10px; }
-.promo-box input { margin-bottom: 0; flex: 1; }
-.promo-btn { background: #a855f7; border: none; color: white; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-.promo-btn:hover { background: #9333ea; }
+    // --- CRASH (爆速＆フリーズ完全修正版) ---
+    const startCrashBtn = document.getElementById("startCrashBtn");
+    if(startCrashBtn) {
+        startCrashBtn.onclick = () => {
+            let bet = Number(document.getElementById("crashBet").value);
+            if (bet > balance || bet <= 0) return;
+
+            setGlobalLock(true); 
+            startCrashBtn.style.display = "none";
+            document.getElementById("crashCashoutBtn").style.display = "block";
+            document.getElementById("crashDisplay").style.color = "#22c55e"; 
+
+            balance -= bet; updateUI();
+            let rand = Math.random();
+            crashGame = { active: true, bet: bet, multiplier: 1.00, crashPoint: rand < 0.04 ? 1.00 : Math.min(100.00, (0.98 / (1 - rand))) };
+
+            crashGame.interval = setInterval(() => {
+                crashGame.multiplier += (0.01 + (crashGame.multiplier * 0.006));
+                document.getElementById("crashDisplay").textContent = crashGame.multiplier.toFixed(2) + "x";
+                document.getElementById("crashCashoutBtn").textContent = `Cashout (¥${Math.floor(crashGame.bet * crashGame.multiplier).toLocaleString()})`;
+
+                if (crashGame.multiplier >= crashGame.crashPoint) {
+                    clearInterval(crashGame.interval); crashGame.active = false;
+                    document.getElementById("crashDisplay").style.color = "#ef4444";
+                    document.getElementById("crashDisplay").textContent = `BOOM! @ ${crashGame.crashPoint.toFixed(2)}x`;
+                    addHistory("Crash", "LOSE", `-¥${crashGame.bet}`);
+                    setTimeout(() => {
+                        startCrashBtn.style.display = "block";
+                        document.getElementById("crashCashoutBtn").style.display = "none"; setGlobalLock(false);
+                    }, 1500);
+                }
+            }, 70);
+        };
+    }
+
+    const crashCashoutBtn = document.getElementById("crashCashoutBtn");
+    if(crashCashoutBtn) {
+        crashCashoutBtn.onclick = () => {
+            if (!crashGame.active) return;
+            clearInterval(crashGame.interval); 
+            crashGame.active = false;
+            
+            let win = Math.floor(crashGame.bet * crashGame.multiplier); 
+            balance += win;
+
+            // ✨ 【大修正】画面にド派手な緑の「勝利のやつ」を表示！
+            const display = document.getElementById("crashDisplay");
+            display.style.color = "#4ade80"; // 鮮やかなネオングリーン
+            display.innerHTML = `🎉 CASHED @ ${crashGame.multiplier.toFixed(2)}x<br><span style="font-size: 24px; color: #eab308; font-weight: bold;">+¥${win.toLocaleString()}</span>`;
+
+            showPopup(`<span style="color:#22c55e; font-weight:bold;">🚀 CASH OUT!</span><br>×${crashGame.multiplier.toFixed(2)}<br>+¥${win.toLocaleString()}`);
+            addHistory("Crash", "WIN", `+¥${win}`); 
+            gainXP(Math.max(8, Math.floor(crashGame.bet / 6)));
+            
+            // ✨ 【大修正】重たい裏計算をすべて廃止し、即座にボタンを解放して次のゲームへ進める！
+            startCrashBtn.style.display = "block";
+            crashCashoutBtn.style.display = "none"; 
+            setGlobalLock(false); 
+            updateUI();
+        };
+    }
+
+    // --- LIMBO ---
+    const limboTargetInput = document.getElementById("limboTarget");
+    if(limboTargetInput) {
+        limboTargetInput.addEventListener("input", (e) => {
+            let t = Number(e.target.value);
+            if(t < 1.01) t = 1.01;
+            let chance = Math.min(99, (0.99 / t) * 100);
+            document.getElementById("limboChanceText").textContent = chance.toFixed(2);
+        });
+    }
+
+    const startLimboBtn = document.getElementById("startLimboBtn");
+    if(startLimboBtn) {
+        startLimboBtn.onclick = async () => {
+            let bet = Number(document.getElementById("limboBet").value);
+            let target = Number(limboTargetInput.value);
+            if (bet > balance || bet <= 0 || target < 1.01) return;
+
+            setGlobalLock(true); balance -= bet; updateUI();
+            const display = document.getElementById("limboDisplay");
+            
+            for (let i = 0; i < 8; i++) {
+                display.textContent = (Math.random() * 10).toFixed(2) + "x";
+                display.style.color = "#7c3aed";
+                await new Promise(r => setTimeout(r, 50));
+            }
+
+            let rand = Math.random();
+            let result = rand === 0 ? 1000 : (0.99 / rand);
+            if(result > 1000) result = 1000;
+
+            display.textContent = result.toFixed(2) + "x";
+
+            if (result >= target) {
+                let win = Math.floor(bet * target); balance += win;
+                display.style.color = "#22c55e";
+                showPopup(`🎯 ×${target.toFixed(2)}<br>+¥${win}<br>WIN!`);
+                addHistory("Limbo", "WIN", `+¥${win}`); gainXP(Math.max(5, Math.floor(bet / 10)));
+            } else {
+                display.style.color = "#ef4444";
+                addHistory("Limbo", "LOSE", `-¥${bet}`);
+            }
+            updateUI(); setGlobalLock(false);
+        };
+    }
+
+    // --- WHEEL ---
+    const wheelRiskSelect = document.getElementById("wheelRisk");
+    const wheelSegmentsSelect = document.getElementById("wheelSegments");
+    const wheelElement = document.getElementById("wheelElement");
+    const startWheelBtn = document.getElementById("startWheelBtn");
+
+    const wheelData = {
+        10: {
+            low: [1.5, 1.2, 1.2, 0, 1.2, 1.2, 1.2, 0, 1.2, 1.2], 
+            medium: [2.0, 0, 1.5, 1.5, 0, 2.0, 0, 1.5, 1.5, 0],  
+            high: [9.9, 0, 0, 0, 0, 0, 0, 0, 0, 0]             
+        },
+        50: {
+            low: Array.from({length: 50}, (_, i) => (i % 10 === 0) ? 1.5 : (i % 5 === 2) ? 0 : 1.2),
+            medium: Array.from({length: 50}, (_, i) => (i % 5 === 0) ? 2.0 : (i % 5 === 1 || i % 5 === 3) ? 0 : 1.5),
+            high: Array.from({length: 50}, (_, i) => i === 0 ? 49.5 : 0) 
+        }
+    };
+
+    let currentSegments = 10;
+    let currentRisk = 'high';
+    let currentWheelArray = wheelData[currentSegments][currentRisk];
+
+    function drawWheel() {
+        if (!wheelElement) return;
+        
+        if (wheelRiskSelect) currentRisk = wheelRiskSelect.value;
+        if (wheelSegmentsSelect) currentSegments = Number(wheelSegmentsSelect.value);
+        
+        currentWheelArray = wheelData[currentSegments][currentRisk];
+        let degPerSeg = 360 / currentSegments;
+        let colors = currentWheelArray.map((mult, i) => {
+            let color = "#374151"; 
+            if (mult === 1.2) color = "#3b82f6"; 
+            if (mult === 1.5) color = "#22c55e"; 
+            if (mult === 2.0) color = "#a855f7"; 
+            if (mult > 2.0) color = "#eab308";   
+            
+            return `${color} ${i * degPerSeg}deg ${(i + 1) * degPerSeg}deg`;
+        });
+        
+        wheelElement.style.background = `conic-gradient(${colors.join(', ')})`;
+        wheelElement.style.transition = "none";
+        wheelElement.style.transform = `rotate(0deg)`; 
+    }
+
+    if (wheelRiskSelect) wheelRiskSelect.addEventListener("change", drawWheel);
+    if (wheelSegmentsSelect) wheelSegmentsSelect.addEventListener("change", drawWheel);
+
+    drawWheel();
+
+    if (startWheelBtn) {
+        startWheelBtn.onclick = () => {
+            let bet = Number(document.getElementById("wheelBet").value);
+            if (bet > balance || bet <= 0 || wheelSpinning) return;
+
+            setGlobalLock(true); wheelSpinning = true;
+            balance -= bet; updateUI();
+
+            let targetIndex = Math.floor(Math.random() * currentSegments);
+            let degPerSeg = 360 / currentSegments;
+            
+            let centerOfTarget = (targetIndex * degPerSeg) + (degPerSeg / 2);
+            let visualTargetDeg = 360 - centerOfTarget;
+            
+            let spinAmount = (360 * 5) + visualTargetDeg;
+
+            wheelElement.style.transition = "none";
+            wheelElement.style.transform = `rotate(0deg)`;
+            
+            void wheelElement.offsetWidth; 
+
+            wheelElement.style.transition = "transform 4s cubic-bezier(0.1, 0.9, 0.2, 1)";
+            wheelElement.style.transform = `rotate(${spinAmount}deg)`;
+
+            setTimeout(() => {
+                let mult = currentWheelArray[targetIndex];
+                if (mult > 0) {
+                    let win = Math.floor(bet * mult); balance += win;
+                    showPopup(`🎡 ×${mult.toFixed(2)}<br>+¥${win}<br>WIN!`);
+                    addHistory("Wheel", "WIN", `+¥${win}`); gainXP(Math.max(5, Math.floor(bet / 10)));
+                } else {
+                    addHistory("Wheel", "LOSE", `-¥${bet}`);
+                }
+                updateUI(); setGlobalLock(false); wheelSpinning = false;
+            }, 4000);
+        };
+    }
+
+    // 初期化
+    updateUI();
+
+    // ==========================================
+    // ✨ 全自動ベットUIアップデート & 破産防止スクリプト
+    // ==========================================
+
+    function modifyBet(inputId, multiplier) {
+        const betInput = document.getElementById(inputId);
+        if (!betInput) return;
+
+        let currentBet = parseFloat(betInput.value) || 0;
+        let newBet = currentBet * multiplier;
+
+        if (newBet > balance) newBet = balance; 
+        if (newBet < 0) newBet = 0;
+
+        betInput.value = Math.floor(newBet);
+    }
+
+    function validateBet(inputElement) {
+        let currentVal = parseFloat(inputElement.value) || 0;
+        if (currentVal > balance) {
+            inputElement.value = Math.floor(balance); 
+        }
+        if (currentVal < 0) {
+            inputElement.value = 0;
+        }
+    }
+
+    const targetIds = ['bet', 'minesBet', 'crashBet', 'limboBet', 'wheelBet'];
+
+    targetIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.betHacked) return; 
+        input.dataset.betHacked = "true";
+
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.gap = '5px';
+        container.style.marginTop = '5px';
+        container.style.width = '100%';
+        container.style.alignItems = 'stretch';
+
+        input.parentNode.insertBefore(container, input);
+        
+        input.style.flex = '1';
+        input.style.width = '100%';
+        input.style.minWidth = '60px'; 
+        input.style.margin = '0';
+        
+        input.addEventListener('input', function() { validateBet(this); });
+        container.appendChild(input);
+
+        const applyBtnStyle = (btn) => {
+            btn.type = 'button';
+            btn.style.background = '#2f3b4e'; 
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.padding = '0 12px';
+            btn.style.width = '55px';       
+            btn.style.flex = 'none';        
+            btn.style.borderRadius = '5px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontWeight = 'bold';
+            btn.style.fontSize = '14px';
+            btn.style.transition = 'background 0.2s';
+            btn.onmouseover = () => btn.style.background = '#3d4b63';
+            btn.onmouseout = () => btn.style.background = '#2f3b4e';
+        };
+
+        const halfBtn = document.createElement('button');
+        halfBtn.innerText = '½';
+        applyBtnStyle(halfBtn);
+        halfBtn.onclick = () => modifyBet(id, 0.5);
+        container.appendChild(halfBtn);
+
+        const doubleBtn = document.createElement('button');
+        doubleBtn.innerText = '2x';
+        applyBtnStyle(doubleBtn);
+        doubleBtn.onclick = () => modifyBet(id, 2);
+        container.appendChild(doubleBtn);
+    });
+
+});
