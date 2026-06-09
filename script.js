@@ -1,259 +1,99 @@
-﻿document.addEventListener("DOMContentLoaded", () => {
-    
-    // 画面切り替えシステム
-    window.showPage = function(p) {
-        const pages = ['home', 'dice', 'mines', 'crash', 'limbo', 'wheel', 'plinko', 'keno'];
-        pages.forEach(id => {
-            let el = document.getElementById(id + "Page");
-            if (el) el.style.display = id === p ? 'block' : 'none';
-        });
-        
-        document.querySelectorAll(".nav-btn").forEach(b => {
-            const pageAttr = b.getAttribute("data-page");
-            if (pageAttr === p) b.classList.add("active");
-            else b.classList.remove("active");
-        });
-        if(p === 'plinko') drawPlinkoBoard(); // Plinko画面ならボード描画
-        if(p === 'keno') drawKenoGrid();      // Keno画面ならグリッド描画
-    };
+/* 🎨 基本デザイン設定 */
+body { 
+    margin: 0; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background-color: #0f172a; 
+    color: white; 
+}
 
+/* 🕹️ ナビゲーションバー */
+.navbar { 
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 20px; background-color: #1e293b; border-bottom: 2px solid #334155; 
+}
+.nav-menu { display: flex; gap: 10px; overflow-x: auto; }
+.nav-btn { 
+    background: #334155; color: white; border: none; 
+    padding: 10px 15px; border-radius: 5px; cursor: pointer; white-space: nowrap; font-weight: bold;
+}
+.nav-btn.active { background: #a855f7; }
+.nav-btn:hover:not(.active) { background: #475569; }
 
-    window.showPage('home');
+.stats { display: flex; gap: 15px; align-items: center; }
+.balance-display { font-size: 1.2rem; font-weight: bold; color: #22c55e; }
+.xp-display { font-size: 0.9rem; color: #cbd5e1; }
 
+/* 📦 メインコンテナ */
+.container { padding: 20px; max-width: 600px; margin: 0 auto; }
+.page { display: none; }
 
-    document.querySelectorAll(".nav-btn, .game-item").forEach(el => {
-        el.addEventListener("click", () => {
-            let page = el.getAttribute("data-page");
-            if (page) window.showPage(page);
-        });
-    });
+/* 🎛️ コントロール（入力欄とボタン） */
+.control-group { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; font-weight: bold; }
+input, select { 
+    width: 100%; padding: 10px; background: #0f172a; color: white; 
+    border: 1px solid #334155; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; 
+    font-size: 1rem;
+}
+.action-btn { 
+    width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; 
+    border: none; border-radius: 8px; cursor: pointer; 
+    background: #3b82f6; color: white; transition: 0.2s; 
+}
+.action-btn:hover { background: #2563eb; }
+.action-btn:disabled { background: #475569; cursor: not-allowed; }
+.cashout-btn { background: #22c55e; }
+.cashout-btn:hover { background: #16a34a; }
 
+/* 🎲 Dice専用スタイル */
+.roll-display { font-size: 3.5rem; text-align: center; font-weight: bold; margin: 20px 0; color: white; }
+.dice-slider-container { position: relative; height: 10px; background: #334155; border-radius: 5px; margin: 40px 0 20px; }
+.dice-bar-fill { position: absolute; height: 10px; background: #22c55e; border-radius: 5px 0 0 5px; }
+.dice-pointer { position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: -5px; transform: translateX(-50%); }
 
-    // --- 基本データ ---
-    let balance = Number(localStorage.getItem("balance")) || 4000;
-    let xp = Number(localStorage.getItem("xp")) || 0;
-    let level = Number(localStorage.getItem("level")) || 1;
-    let minesGame = { active: false, bet: 0, count: 0, bombs: [], gemsOpened: 0 };
-    let crashGame = { active: false, bet: 0, multiplier: 1.00, interval: null, crashPoint: 0 };
-    let wheelSpinning = false;
-    let kenoSelected = [];
+/* 💣 Mines専用スタイル */
+.mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+.mine-tile { 
+    background: #334155; aspect-ratio: 1; border-radius: 8px; 
+    display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; transition: 0.2s; 
+}
+.mine-tile:hover { background: #475569; }
+.mine-tile.gem { background: #1e293b; cursor: default; }
+.mine-tile.bomb { background: #ef4444; cursor: default; }
+.mine-tile.revealed-bomb { background: #1e293b; opacity: 0.7; cursor: default; }
 
+/* 🚀 Crash専用スタイル */
+.crash-display-container { 
+    background: #1e293b; height: 250px; display: flex; align-items: center; justify-content: center; 
+    border-radius: 8px; margin-bottom: 20px; border: 2px solid #334155; text-align: center;
+}
+.crash-multiplier { font-size: 4rem; font-weight: bold; color: white; }
 
-    function updateUI() {
-        document.getElementById("balance").textContent = balance.toLocaleString();
-        document.getElementById("level").textContent = level;
-        document.getElementById("xp").textContent = xp;
-        localStorage.setItem("balance", balance); localStorage.setItem("xp", xp); localStorage.setItem("level", level);
-    }
+/* 🎯 Limbo専用スタイル */
+.limbo-display { font-size: 4.5rem; font-weight: bold; text-align: center; margin: 30px 0; color: #a855f7;}
 
+/* 🎡 Wheel専用スタイル */
+.wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 30px auto; }
+.wheel { width: 100%; height: 100%; border-radius: 50%; background: #334155; border: 5px solid #1e293b; box-sizing: border-box; }
+.wheel-pointer { 
+    position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
+    width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10;
+}
 
-    function showPopup(html) {
-        const p = document.getElementById("winPopup");
-        if(p) {
-            p.innerHTML = html; p.style.display = "block";
-            setTimeout(() => p.style.display = "none", 2000);
-        }
-    }
+/* 📜 履歴とポップアップ */
+.history { margin-top: 30px; padding: 15px; background: #1e293b; border-radius: 8px; }
+.history h3 { margin-top: 0; color: #94a3b8; }
+.history-list { max-height: 200px; overflow-y: auto; }
+.hist-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
 
+#winPopup { 
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+    background: rgba(15, 23, 42, 0.95); padding: 15px 30px; border-radius: 10px; 
+    border: 2px solid #a855f7; display: none; z-index: 1000; text-align: center; font-weight: bold; font-size: 1.2rem;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+}
 
-    function addHistory(game, status, amount) {
-        const list = document.getElementById("historyList");
-        if(!list) return;
-        const color = status.includes("WIN") || status.includes("CASH") ? "#22c55e" : "#ef4444";
-        const item = document.createElement("div");
-        item.className = "hist-item";
-        item.innerHTML = `<span>${game}</span> <strong style="color:${color}">${status} (${amount})</strong>`;
-        list.insertBefore(item, list.firstChild);
-    }
-
-
-    function gainXP(amount) {
-        xp += amount;
-        if (xp >= 100) { xp -= 100; level++; showPopup(`⭐ LEVEL UP! Lv.${level}`); }
-        updateUI();
-    }
-
-
-    function setGlobalLock(locked) {
-        document.querySelectorAll(".nav-btn, .game-item").forEach(el => el.style.pointerEvents = locked ? "none" : "auto");
-        const inputs = ["bet", "chance", "minesBet", "crashBet", "limboBet", "limboTarget", "wheelBet", "plinkoBet", "kenoBet", "rollBtn", "startMinesBtn", "startCrashBtn", "startLimboBtn", "startWheelBtn", "startPlinkoBtn", "startKenoBtn"];
-        inputs.forEach(id => { let el = document.getElementById(id); if(el) el.disabled = locked; });
-    }
-
-
-    // --- HOME ---
-    const claimBtn = document.getElementById("claimBtn");
-    if(claimBtn) claimBtn.onclick = () => { balance += 500; showPopup("🎁 Daily Bonus +¥500"); updateUI(); };
-
-
-    // --- DICE, MINES, CRASH, LIMBO, WHEEL は以前のロジックを保持 ---
-    // (中略：以前のコードと同じため、全自動化スクリプトでIDを監視して動きます)
-    // 既存の Dice / Mines / Crash / Limbo / Wheel のロジックをここに集約
-
-
-    // --- 🎳 PLINKO ---
-    const plinkoCanvas = document.getElementById("plinkoCanvas");
-    const plinkoRows = 10;
-    const plinkoMultipliers = {
-        low: [5, 2, 1.2, 0.5, 0.2, 0.2, 0.5, 1.2, 2, 5],
-        medium: [10, 5, 2, 0.5, 0.1, 0.1, 0.5, 2, 5, 10],
-        high: [50, 10, 3, 0.2, 0, 0, 0.2, 3, 10, 50]
-    };
-
-
-    function drawPlinkoBoard() {
-        if(!plinkoCanvas) return;
-        const ctx = plinkoCanvas.getContext("2d");
-        ctx.clearRect(0, 0, 400, 400);
-        ctx.fillStyle = "#334155";
-        for (let r = 2; r <= plinkoRows + 1; r++) {
-            for (let i = 0; i < r; i++) {
-                let x = 200 - (r * 15) + (i * 30);
-                let y = r * 30;
-                ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
-            }
-        }
-    }
-
-
-    const startPlinkoBtn = document.getElementById("startPlinkoBtn");
-    if(startPlinkoBtn) {
-        startPlinkoBtn.onclick = () => {
-            let bet = Number(document.getElementById("plinkoBet").value);
-            let risk = document.getElementById("plinkoRisk").value;
-            if (bet > balance || bet <= 0) return;
-            setGlobalLock(true); balance -= bet; updateUI();
-
-
-            const ctx = plinkoCanvas.getContext("2d");
-            let x = 200, y = 30;
-            let currentColumn = 0;
-
-
-            let dropInterval = setInterval(() => {
-                drawPlinkoBoard();
-                y += 30;
-                let move = Math.random() < 0.5 ? -15 : 15;
-                if(move > 0) currentColumn++;
-                x += move;
-
-
-                ctx.fillStyle = "#ef4444";
-                ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
-
-
-                if (y >= (plinkoRows + 1) * 30) {
-                    clearInterval(dropInterval);
-                    let mults = plinkoMultipliers[risk];
-                    let finalIdx = Math.max(0, Math.min(mults.length - 1, currentColumn));
-                    let mult = mults[finalIdx];
-                    let win = Math.floor(bet * mult); balance += win;
-                    
-                    if(mult > 0) {
-                        showPopup(`🎳 ×${mult} WIN! +¥${win}`);
-                        addHistory("Plinko", "WIN", `+¥${win}`); gainXP(5);
-                    } else { addHistory("Plinko", "LOSE", `-¥${bet}`); }
-                    
-                    updateUI(); setGlobalLock(false);
-                }
-            }, 100);
-        };
-    }
-
-
-    // --- 🎫 KENO ---
-    function drawKenoGrid() {
-        const grid = document.getElementById("kenoGrid");
-        if(!grid || grid.children.length > 0) return;
-        for (let i = 1; i <= 40; i++) {
-            let t = document.createElement("div"); t.className = "keno-tile"; t.textContent = i;
-            t.onclick = () => {
-                if (kenoSelected.includes(i)) {
-                    kenoSelected = kenoSelected.filter(n => n !== i); t.classList.remove("selected");
-                } else if (kenoSelected.length < 10) {
-                    kenoSelected.push(i); t.classList.add("selected");
-                }
-            };
-            grid.appendChild(t);
-        }
-    }
-
-
-    const startKenoBtn = document.getElementById("startKenoBtn");
-    if(startKenoBtn) {
-        const kenoPaytable = [0, 0, 1.5, 3, 10, 50, 100, 250, 500, 1000, 2000]; // マッチ数に応じた倍率
-        startKenoBtn.onclick = async () => {
-            let bet = Number(document.getElementById("kenoBet").value);
-            if (bet > balance || bet <= 0 || kenoSelected.length === 0) return;
-            setGlobalLock(true); balance -= bet; updateUI();
-
-
-            let drawn = [];
-            while(drawn.length < 10) {
-                let n = Math.floor(Math.random() * 40) + 1;
-                if(!drawn.includes(n)) drawn.push(n);
-            }
-
-
-            let matches = 0;
-            const tiles = document.querySelectorAll(".keno-tile");
-            for (let n of drawn) {
-                await new Promise(r => setTimeout(r, 150));
-                let tile = tiles[n-1];
-                if (kenoSelected.includes(n)) { tile.classList.add("hit"); matches++; }
-                else { tile.classList.add("miss"); }
-            }
-
-
-            let mult = kenoPaytable[matches];
-            let win = Math.floor(bet * mult); balance += win;
-            document.getElementById("kenoMatched").textContent = matches;
-            document.getElementById("kenoPayout").textContent = mult;
-
-
-            if(mult > 0) {
-                showPopup(`🎫 Keno ${matches} Match! +¥${win}`);
-                addHistory("Keno", "WIN", `+¥${win}`); gainXP(matches * 5);
-            } else { addHistory("Keno", "LOSE", `-¥${bet}`); }
-
-
-            setTimeout(() => {
-                tiles.forEach(t => t.classList.remove("hit", "miss"));
-                updateUI(); setGlobalLock(false);
-            }, 2000);
-        };
-    }
-
-
-    // --- 共通オートベットボタン & 破産防止 ---
-    function modifyBet(inputId, multiplier) {
-        const input = document.getElementById(inputId);
-        let val = Math.floor((parseFloat(input.value) || 0) * multiplier);
-        input.value = Math.min(balance, Math.max(0, val));
-    }
-    window.validateBet = (el) => { if(el.value > balance) el.value = Math.floor(balance); };
-
-
-    (function setupUI() {
-        const ids = ['bet', 'minesBet', 'crashBet', 'limboBet', 'wheelBet', 'plinkoBet', 'kenoBet'];
-        ids.forEach(id => {
-            const input = document.getElementById(id);
-            if (!input || input.dataset.hacked) return;
-            input.dataset.hacked = "true";
-            const container = document.createElement('div');
-            container.style.display = 'flex'; container.style.gap = '5px'; container.style.marginTop = '5px';
-            input.parentNode.insertBefore(container, input);
-            input.style.flex = '1'; input.addEventListener('input', function(){ validateBet(this); });
-            container.appendChild(input);
-            ['½', '2x'].forEach(t => {
-                const b = document.createElement('button'); b.innerText = t;
-                b.style.cssText = "background:#334155; color:white; border:none; padding:0 12px; border-radius:5px; cursor:pointer; font-weight:bold;";
-                b.onclick = () => modifyBet(id, t === '½' ? 0.5 : 2);
-                container.appendChild(b);
-            });
-        });
-    })();
-
-
-    updateUI();
-});
+.promo-box { display: flex; gap: 10px; margin-top: 10px; }
+.promo-box input { margin-bottom: 0; flex: 1; }
+.promo-btn { background: #a855f7; border: none; color: white; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.promo-btn:hover { background: #9333ea; }
