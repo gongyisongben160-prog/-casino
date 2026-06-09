@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -52,13 +52,11 @@
         .cashout-btn { background: #22c55e; }
         .cashout-btn:hover { background: #16a34a; }
 
-
         /* 🎲 Dice専用スタイル */
         .roll-display { font-size: 3.5rem; text-align: center; font-weight: bold; margin: 20px 0; color: white; }
         .dice-slider-container { position: relative; height: 10px; background: #334155; border-radius: 5px; margin: 40px 0 20px; }
         .dice-bar-fill { position: absolute; height: 10px; background: #22c55e; border-radius: 5px 0 0 5px; }
         .dice-pointer { position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: -5px; transform: translateX(-50%); }
-
 
         /* 💣 Mines専用スタイル */
         .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -71,7 +69,6 @@
         .mine-tile.bomb { background: #ef4444; cursor: default; }
         .mine-tile.revealed-bomb { background: #1e293b; opacity: 0.7; cursor: default; }
 
-
         /* 🚀 Crash専用スタイル */
         .crash-display-container { 
             background: #1e293b; height: 250px; display: flex; align-items: center; justify-content: center; 
@@ -79,10 +76,8 @@
         }
         .crash-multiplier { font-size: 4rem; font-weight: bold; color: white; }
 
-
         /* 🎯 Limbo専用スタイル */
         .limbo-display { font-size: 4.5rem; font-weight: bold; text-align: center; margin: 30px 0; color: #a855f7;}
-
 
         /* 🎡 Wheel専用スタイル */
         .wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 30px auto; }
@@ -91,7 +86,6 @@
             position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
             width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10;
         }
-
 
         /* 📜 履歴とポップアップ */
         .history { margin-top: 30px; padding: 15px; background: #1e293b; border-radius: 8px; }
@@ -106,7 +100,6 @@
             box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
         }
 
-
         .promo-box { display: flex; gap: 10px; margin-top: 10px; }
         .promo-box input { margin-bottom: 0; flex: 1; }
         .promo-btn { background: #a855f7; border: none; color: white; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -114,7 +107,6 @@
     </style>
 </head>
 <body>
-
 
     <div class="navbar">
         <div class="nav-menu">
@@ -131,12 +123,9 @@
         </div>
     </div>
 
-
     <div id="winPopup"></div>
 
-
     <div class="container">
-
 
         <div id="homePage" class="page">
             <h2>Welcome to Neon Casino</h2>
@@ -155,7 +144,6 @@
             </div>
         </div>
 
-
         <div id="dicePage" class="page">
             <div id="rollDisplay" class="roll-display">50.00</div>
             <div class="dice-slider-container">
@@ -168,7 +156,6 @@
                 <div><label>Win Chance</label><strong id="chanceText">49.50</strong>%</div>
             </div>
 
-
             <div class="control-group">
                 <label>Win Chance (1-98%)</label>
                 <input type="range" id="chance" min="1" max="98" value="50">
@@ -179,7 +166,6 @@
             </div>
             <button id="rollBtn" class="action-btn">Roll Dice</button>
         </div>
-
 
         <div id="minesPage" class="page">
             <div style="text-align: center; margin-bottom: 10px;">
@@ -204,7 +190,6 @@
             <button id="cashoutBtn" class="action-btn cashout-btn" style="display:none; margin-top:10px;">Cashout</button>
         </div>
 
-
         <div id="crashPage" class="page">
             <div class="crash-display-container">
                 <div id="crashDisplay" class="crash-multiplier">1.00x</div>
@@ -216,7 +201,6 @@
             <button id="startCrashBtn" class="action-btn">Bet & Start</button>
             <button id="crashCashoutBtn" class="action-btn cashout-btn" style="display:none;">Cashout</button>
         </div>
-
 
         <div id="limboPage" class="page">
             <div id="limboDisplay" class="limbo-display">1.00x</div>
@@ -232,7 +216,6 @@
             </div>
             <button id="startLimboBtn" class="action-btn">Bet & Start</button>
         </div>
-
 
         <div id="wheelPage" class="page">
             <div class="wheel-container">
@@ -257,16 +240,13 @@
             <button id="startWheelBtn" class="action-btn">Spin Wheel</button>
         </div>
 
-
         <div class="history">
             <h3>Recent Plays</h3>
             <div id="historyList" class="history-list">
                 </div>
         </div>
 
-
     </div>
-
 
     <script src="script.js"></script>
 </body>
