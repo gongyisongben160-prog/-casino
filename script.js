@@ -1,99 +1,328 @@
-/* 🎨 基本デザイン設定 */
-body { 
-    margin: 0; 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    background-color: #0f172a; 
-    color: white; 
-}
+document.addEventListener("DOMContentLoaded", () => {
+    // --- 画面切り替え ---
+    window.showPage = function(p) {
+        const pages = ['home', 'dice', 'mines', 'crash', 'limbo', 'wheel', 'plinko', 'keno'];
+        pages.forEach(id => {
+            let el = document.getElementById(id + "Page");
+            if (el) el.style.display = id === p ? 'block' : 'none';
+        });
+        document.querySelectorAll(".nav-btn").forEach(b => {
+            b.classList.toggle("active", b.getAttribute("data-page") === p);
+        });
+        if(p === 'plinko') drawPlinkoBoard();
+        if(p === 'keno') drawKenoGrid();
+    };
 
-/* 🕹️ ナビゲーションバー */
-.navbar { 
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 15px 20px; background-color: #1e293b; border-bottom: 2px solid #334155; 
-}
-.nav-menu { display: flex; gap: 10px; overflow-x: auto; }
-.nav-btn { 
-    background: #334155; color: white; border: none; 
-    padding: 10px 15px; border-radius: 5px; cursor: pointer; white-space: nowrap; font-weight: bold;
-}
-.nav-btn.active { background: #a855f7; }
-.nav-btn:hover:not(.active) { background: #475569; }
+    window.showPage('home');
+    document.querySelectorAll(".nav-btn").forEach(el => {
+        el.addEventListener("click", () => window.showPage(el.getAttribute("data-page")));
+    });
 
-.stats { display: flex; gap: 15px; align-items: center; }
-.balance-display { font-size: 1.2rem; font-weight: bold; color: #22c55e; }
-.xp-display { font-size: 0.9rem; color: #cbd5e1; }
+    // --- 基本システム ---
+    let balance = Number(localStorage.getItem("balance")) || 4000;
+    let xp = Number(localStorage.getItem("xp")) || 0;
+    let level = Number(localStorage.getItem("level")) || 1;
 
-/* 📦 メインコンテナ */
-.container { padding: 20px; max-width: 600px; margin: 0 auto; }
-.page { display: none; }
+    function updateUI() {
+        document.getElementById("balance").textContent = Math.floor(balance).toLocaleString();
+        document.getElementById("level").textContent = level;
+        document.getElementById("xp").textContent = xp;
+        localStorage.setItem("balance", balance); 
+        localStorage.setItem("xp", xp); 
+        localStorage.setItem("level", level);
+    }
 
-/* 🎛️ コントロール（入力欄とボタン） */
-.control-group { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; font-weight: bold; }
-input, select { 
-    width: 100%; padding: 10px; background: #0f172a; color: white; 
-    border: 1px solid #334155; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; 
-    font-size: 1rem;
-}
-.action-btn { 
-    width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; 
-    border: none; border-radius: 8px; cursor: pointer; 
-    background: #3b82f6; color: white; transition: 0.2s; 
-}
-.action-btn:hover { background: #2563eb; }
-.action-btn:disabled { background: #475569; cursor: not-allowed; }
-.cashout-btn { background: #22c55e; }
-.cashout-btn:hover { background: #16a34a; }
+    function showPopup(msg) {
+        const p = document.getElementById("winPopup");
+        p.textContent = msg; p.style.display = "block";
+        setTimeout(() => p.style.display = "none", 2000);
+    }
 
-/* 🎲 Dice専用スタイル */
-.roll-display { font-size: 3.5rem; text-align: center; font-weight: bold; margin: 20px 0; color: white; }
-.dice-slider-container { position: relative; height: 10px; background: #334155; border-radius: 5px; margin: 40px 0 20px; }
-.dice-bar-fill { position: absolute; height: 10px; background: #22c55e; border-radius: 5px 0 0 5px; }
-.dice-pointer { position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: -5px; transform: translateX(-50%); }
+    function addHistory(game, status, amount) {
+        const list = document.getElementById("historyList");
+        const color = status === "WIN" ? "#22c55e" : "#ef4444";
+        const div = document.createElement("div");
+        div.className = "hist-item";
+        div.innerHTML = `<span>${game}</span> <strong style="color:${color}">${status} ${amount}</strong>`;
+        list.insertBefore(div, list.firstChild);
+    }
 
-/* 💣 Mines専用スタイル */
-.mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-.mine-tile { 
-    background: #334155; aspect-ratio: 1; border-radius: 8px; 
-    display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; transition: 0.2s; 
-}
-.mine-tile:hover { background: #475569; }
-.mine-tile.gem { background: #1e293b; cursor: default; }
-.mine-tile.bomb { background: #ef4444; cursor: default; }
-.mine-tile.revealed-bomb { background: #1e293b; opacity: 0.7; cursor: default; }
+    function gainXP(amount) {
+        xp += amount;
+        if(xp >= 100) { xp -= 100; level++; showPopup(`⭐ LEVEL UP! Lv.${level}`); }
+        updateUI();
+    }
 
-/* 🚀 Crash専用スタイル */
-.crash-display-container { 
-    background: #1e293b; height: 250px; display: flex; align-items: center; justify-content: center; 
-    border-radius: 8px; margin-bottom: 20px; border: 2px solid #334155; text-align: center;
-}
-.crash-multiplier { font-size: 4rem; font-weight: bold; color: white; }
+    // --- HOME ---
+    document.getElementById("claimBtn")?.addEventListener("click", () => {
+        balance += 500; showPopup("🎁 Daily Bonus +¥500"); updateUI();
+    });
 
-/* 🎯 Limbo専用スタイル */
-.limbo-display { font-size: 4.5rem; font-weight: bold; text-align: center; margin: 30px 0; color: #a855f7;}
+    // --- DICE ---
+    const chanceInput = document.getElementById("chance");
+    if(chanceInput) {
+        chanceInput.oninput = () => {
+            document.getElementById("chanceText").textContent = chanceInput.value + ".00";
+            document.getElementById("payoutText").textContent = (99 / chanceInput.value).toFixed(2);
+            document.getElementById("barFill").style.width = chanceInput.value + "%";
+            document.getElementById("pointer").style.left = chanceInput.value + "%";
+        };
+    }
+    document.getElementById("rollBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("bet").value);
+        let chance = Number(chanceInput.value);
+        if(bet > balance || bet <= 0) return;
+        balance -= bet;
+        
+        let roll = (Math.random() * 100).toFixed(2);
+        document.getElementById("rollDisplay").textContent = roll;
+        
+        if(roll <= chance) {
+            let win = Math.floor(bet * (99 / chance));
+            balance += win;
+            document.getElementById("rollDisplay").style.color = "#22c55e";
+            addHistory("Dice", "WIN", `+¥${win}`);
+            gainXP(10);
+        } else {
+            document.getElementById("rollDisplay").style.color = "#ef4444";
+            addHistory("Dice", "LOSE", `-¥${bet}`);
+        }
+        updateUI();
+    });
 
-/* 🎡 Wheel専用スタイル */
-.wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 30px auto; }
-.wheel { width: 100%; height: 100%; border-radius: 50%; background: #334155; border: 5px solid #1e293b; box-sizing: border-box; }
-.wheel-pointer { 
-    position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
-    width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10;
-}
+    // --- MINES ---
+    const minesGrid = document.getElementById("minesGrid");
+    let minesGameActive = false;
+    let currentMinesBet = 0;
+    
+    function createMines() {
+        minesGrid.innerHTML = '';
+        for(let i=0; i<25; i++) {
+            let tile = document.createElement("div");
+            tile.className = "mine-tile";
+            tile.onclick = () => {
+                if(!minesGameActive) return;
+                let isBomb = Math.random() < 0.2;
+                if(isBomb) {
+                    tile.classList.add("bomb"); tile.textContent = "💣";
+                    minesGameActive = false;
+                    addHistory("Mines", "LOSE", `-¥${currentMinesBet}`);
+                    document.getElementById("cashoutBtn").style.display = 'none';
+                    document.getElementById("startMinesBtn").style.display = 'block';
+                } else {
+                    tile.classList.add("gem"); tile.textContent = "💎";
+                    let win = Math.floor(currentMinesBet * 1.5);
+                    document.getElementById("currentMult").textContent = "1.50";
+                    currentMinesBet = win; 
+                }
+            };
+            minesGrid.appendChild(tile);
+        }
+    }
+    createMines();
+    
+    document.getElementById("startMinesBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("minesBet").value);
+        if(bet > balance || bet <= 0) return;
+        balance -= bet; currentMinesBet = bet;
+        minesGameActive = true;
+        document.getElementById("startMinesBtn").style.display = 'none';
+        document.getElementById("cashoutBtn").style.display = 'block';
+        createMines(); updateUI();
+    });
+    
+    document.getElementById("cashoutBtn")?.addEventListener("click", () => {
+        if(!minesGameActive) return;
+        minesGameActive = false;
+        balance += currentMinesBet;
+        addHistory("Mines", "WIN", `+¥${currentMinesBet}`);
+        document.getElementById("startMinesBtn").style.display = 'block';
+        document.getElementById("cashoutBtn").style.display = 'none';
+        updateUI();
+    });
 
-/* 📜 履歴とポップアップ */
-.history { margin-top: 30px; padding: 15px; background: #1e293b; border-radius: 8px; }
-.history h3 { margin-top: 0; color: #94a3b8; }
-.history-list { max-height: 200px; overflow-y: auto; }
-.hist-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+    // --- CRASH ---
+    let crashInterval;
+    document.getElementById("startCrashBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("crashBet").value);
+        if(bet > balance || bet <= 0) return;
+        balance -= bet; updateUI();
+        
+        document.getElementById("startCrashBtn").style.display = "none";
+        document.getElementById("crashCashoutBtn").style.display = "block";
+        
+        let mult = 1.00;
+        let crashPoint = (Math.random() * 3) + 1.1;
+        
+        clearInterval(crashInterval);
+        crashInterval = setInterval(() => {
+            mult += 0.01;
+            document.getElementById("crashDisplay").textContent = mult.toFixed(2) + "x";
+            
+            if(mult >= crashPoint) {
+                clearInterval(crashInterval);
+                document.getElementById("crashDisplay").style.color = "#ef4444";
+                document.getElementById("startCrashBtn").style.display = "block";
+                document.getElementById("crashCashoutBtn").style.display = "none";
+                addHistory("Crash", "LOSE", `-¥${bet}`);
+            }
+        }, 50);
+        
+        document.getElementById("crashCashoutBtn").onclick = () => {
+            clearInterval(crashInterval);
+            let win = Math.floor(bet * mult);
+            balance += win;
+            document.getElementById("startCrashBtn").style.display = "block";
+            document.getElementById("crashCashoutBtn").style.display = "none";
+            document.getElementById("crashDisplay").style.color = "#22c55e";
+            addHistory("Crash", "WIN", `+¥${win}`);
+            updateUI();
+        };
+    });
 
-#winPopup { 
-    position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-    background: rgba(15, 23, 42, 0.95); padding: 15px 30px; border-radius: 10px; 
-    border: 2px solid #a855f7; display: none; z-index: 1000; text-align: center; font-weight: bold; font-size: 1.2rem;
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
-}
+    // --- LIMBO ---
+    document.getElementById("limboTarget")?.addEventListener("input", (e) => {
+        let target = Number(e.target.value);
+        if(target >= 1.01) {
+            document.getElementById("limboChanceText").textContent = (99 / target).toFixed(2);
+        }
+    });
+    document.getElementById("startLimboBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("limboBet").value);
+        let target = Number(document.getElementById("limboTarget").value);
+        if(bet > balance || bet <= 0) return;
+        balance -= bet;
+        
+        let result = (Math.random() * 5) + 1;
+        document.getElementById("limboDisplay").textContent = result.toFixed(2) + "x";
+        
+        if(result >= target) {
+            let win = Math.floor(bet * target);
+            balance += win;
+            document.getElementById("limboDisplay").style.color = "#22c55e";
+            addHistory("Limbo", "WIN", `+¥${win}`);
+            gainXP(15);
+        } else {
+            document.getElementById("limboDisplay").style.color = "#ef4444";
+            addHistory("Limbo", "LOSE", `-¥${bet}`);
+        }
+        updateUI();
+    });
 
-.promo-box { display: flex; gap: 10px; margin-top: 10px; }
-.promo-box input { margin-bottom: 0; flex: 1; }
-.promo-btn { background: #a855f7; border: none; color: white; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-.promo-btn:hover { background: #9333ea; }
+    // --- WHEEL ---
+    let wheelRotation = 0;
+    document.getElementById("startWheelBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("wheelBet").value);
+        if(bet > balance || bet <= 0) return;
+        balance -= bet; updateUI();
+        
+        let wheel = document.getElementById("wheelElement");
+        wheelRotation += 1000 + Math.random() * 1000;
+        wheel.style.transform = `rotate(${wheelRotation}deg)`;
+        
+        setTimeout(() => {
+            let win = Math.random() > 0.5 ? bet * 2 : 0;
+            balance += win;
+            addHistory("Wheel", win > 0 ? "WIN" : "LOSE", win > 0 ? `+¥${win}` : `-¥${bet}`);
+            updateUI();
+        }, 3000);
+    });
+
+    // --- PLINKO ---
+    function drawPlinkoBoard() {
+        const canvas = document.getElementById("plinkoCanvas");
+        if(!canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#334155";
+        ctx.clearRect(0, 0, 400, 400);
+        for (let r = 2; r <= 11; r++) {
+            for (let i = 0; i < r; i++) {
+                ctx.beginPath(); ctx.arc(200 - (r * 15) + (i * 30), r * 30, 3, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+    }
+    document.getElementById("startPlinkoBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("plinkoBet").value);
+        if (bet > balance || bet <= 0) return;
+        balance -= bet; updateUI();
+        
+        let canvas = document.getElementById("plinkoCanvas");
+        let ctx = canvas.getContext("2d");
+        let x = 200, y = 30;
+        
+        let drop = setInterval(() => {
+            drawPlinkoBoard();
+            y += 30;
+            x += Math.random() < 0.5 ? -15 : 15;
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+            
+            if (y >= 330) {
+                clearInterval(drop);
+                let mult = [0.2, 1.2, 5, 10][Math.floor(Math.random()*4)];
+                let win = Math.floor(bet * mult);
+                balance += win; updateUI();
+                showPopup(`Plinko: ${mult}x`);
+                addHistory("Plinko", win>0?"WIN":"LOSE", win>0?`+¥${win}`:`-¥${bet}`);
+                gainXP(5);
+            }
+        }, 100);
+    });
+
+    // --- KENO ---
+    let kenoSelected = [];
+    function drawKenoGrid() {
+        const grid = document.getElementById("kenoGrid");
+        if(!grid || grid.children.length > 0) return;
+        for (let i = 1; i <= 40; i++) {
+            let t = document.createElement("div"); 
+            t.className = "keno-tile"; t.textContent = i;
+            t.onclick = () => {
+                if(kenoSelected.includes(i)) {
+                    kenoSelected = kenoSelected.filter(n => n !== i);
+                    t.classList.remove("selected");
+                } else if(kenoSelected.length < 10) {
+                    kenoSelected.push(i);
+                    t.classList.add("selected");
+                }
+            };
+            grid.appendChild(t);
+        }
+    }
+    document.getElementById("startKenoBtn")?.addEventListener("click", () => {
+        let bet = Number(document.getElementById("kenoBet").value);
+        if (bet > balance || bet <= 0 || kenoSelected.length === 0) return;
+        balance -= bet; updateUI();
+        
+        const tiles = document.querySelectorAll(".keno-tile");
+        tiles.forEach(t => t.classList.remove("hit", "miss"));
+        
+        let drawn = [];
+        while(drawn.length < 10) {
+            let n = Math.floor(Math.random() * 40) + 1;
+            if(!drawn.includes(n)) drawn.push(n);
+        }
+        
+        let matches = 0;
+        drawn.forEach(n => {
+            if(kenoSelected.includes(n)) { tiles[n-1].classList.add("hit"); matches++; }
+            else { tiles[n-1].classList.add("miss"); }
+        });
+        
+        let mult = matches > 2 ? matches * 2 : 0;
+        let win = Math.floor(bet * mult);
+        balance += win; updateUI();
+        
+        document.getElementById("kenoMatched").textContent = matches;
+        document.getElementById("kenoPayout").textContent = mult;
+        
+        if(mult > 0) {
+            showPopup(`🎫 Keno ${matches} Hits! +¥${win}`);
+            addHistory("Keno", "WIN", `+¥${win}`); gainXP(10);
+        } else {
+            addHistory("Keno", "LOSE", `-¥${bet}`);
+        }
+    });
+
+    updateUI();
+});
