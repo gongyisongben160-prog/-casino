@@ -4,110 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neon Casino</title>
-    <style>
-        /* 🎨 基本デザイン設定 */
-        body { 
-            margin: 0; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #0f172a; 
-            color: white; 
-        }
-        
-        /* 🕹️ ナビゲーションバー */
-        .navbar { 
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 20px; background-color: #1e293b; border-bottom: 2px solid #334155; 
-        }
-        .nav-menu { display: flex; gap: 10px; overflow-x: auto; }
-        .nav-btn { 
-            background: #334155; color: white; border: none; 
-            padding: 10px 15px; border-radius: 5px; cursor: pointer; white-space: nowrap; font-weight: bold;
-        }
-        .nav-btn.active { background: #a855f7; }
-        .nav-btn:hover:not(.active) { background: #475569; }
-        
-        .stats { display: flex; gap: 15px; align-items: center; }
-        .balance-display { font-size: 1.2rem; font-weight: bold; color: #22c55e; }
-        .xp-display { font-size: 0.9rem; color: #cbd5e1; }
-        
-        /* 📦 メインコンテナ */
-        .container { padding: 20px; max-width: 600px; margin: 0 auto; }
-        .page { display: none; }
-        
-        /* 🎛️ コントロール（入力欄とボタン） */
-        .control-group { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; font-weight: bold; }
-        input, select { 
-            width: 100%; padding: 10px; background: #0f172a; color: white; 
-            border: 1px solid #334155; border-radius: 5px; box-sizing: border-box; margin-bottom: 10px; 
-            font-size: 1rem;
-        }
-        .action-btn { 
-            width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; 
-            border: none; border-radius: 8px; cursor: pointer; 
-            background: #3b82f6; color: white; transition: 0.2s; 
-        }
-        .action-btn:hover { background: #2563eb; }
-        .action-btn:disabled { background: #475569; cursor: not-allowed; }
-        .cashout-btn { background: #22c55e; }
-        .cashout-btn:hover { background: #16a34a; }
-
-        /* 🎲 Dice専用スタイル */
-        .roll-display { font-size: 3.5rem; text-align: center; font-weight: bold; margin: 20px 0; color: white; }
-        .dice-slider-container { position: relative; height: 10px; background: #334155; border-radius: 5px; margin: 40px 0 20px; }
-        .dice-bar-fill { position: absolute; height: 10px; background: #22c55e; border-radius: 5px 0 0 5px; }
-        .dice-pointer { position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: -5px; transform: translateX(-50%); }
-
-        /* 💣 Mines専用スタイル */
-        .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-        .mine-tile { 
-            background: #334155; aspect-ratio: 1; border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; transition: 0.2s; 
-        }
-        .mine-tile:hover { background: #475569; }
-        .mine-tile.gem { background: #1e293b; cursor: default; }
-        .mine-tile.bomb { background: #ef4444; cursor: default; }
-        .mine-tile.revealed-bomb { background: #1e293b; opacity: 0.7; cursor: default; }
-
-        /* 🚀 Crash専用スタイル */
-        .crash-display-container { 
-            background: #1e293b; height: 250px; display: flex; align-items: center; justify-content: center; 
-            border-radius: 8px; margin-bottom: 20px; border: 2px solid #334155; text-align: center;
-        }
-        .crash-multiplier { font-size: 4rem; font-weight: bold; color: white; }
-
-        /* 🎯 Limbo専用スタイル */
-        .limbo-display { font-size: 4.5rem; font-weight: bold; text-align: center; margin: 30px 0; color: #a855f7;}
-
-        /* 🎡 Wheel専用スタイル */
-        .wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 30px auto; }
-        .wheel { width: 100%; height: 100%; border-radius: 50%; background: #334155; border: 5px solid #1e293b; box-sizing: border-box; }
-        .wheel-pointer { 
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
-            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10;
-        }
-
-        /* 📜 履歴とポップアップ */
-        .history { margin-top: 30px; padding: 15px; background: #1e293b; border-radius: 8px; }
-        .history h3 { margin-top: 0; color: #94a3b8; }
-        .history-list { max-height: 200px; overflow-y: auto; }
-        .hist-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
-        
-        #winPopup { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-            background: rgba(15, 23, 42, 0.95); padding: 15px 30px; border-radius: 10px; 
-            border: 2px solid #a855f7; display: none; z-index: 1000; text-align: center; font-weight: bold; font-size: 1.2rem;
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
-        }
-
-        .promo-box { display: flex; gap: 10px; margin-top: 10px; }
-        .promo-box input { margin-bottom: 0; flex: 1; }
-        .promo-btn { background: #a855f7; border: none; color: white; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .promo-btn:hover { background: #9333ea; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="navbar">
         <div class="nav-menu">
             <button class="nav-btn active" data-page="home">🏠 Home</button>
@@ -116,6 +15,8 @@
             <button class="nav-btn" data-page="crash">🚀 Crash</button>
             <button class="nav-btn" data-page="limbo">🎯 Limbo</button>
             <button class="nav-btn" data-page="wheel">🎡 Wheel</button>
+            <button class="nav-btn" data-page="plinko">🎳 Plinko</button>
+            <button class="nav-btn" data-page="keno">🎫 Keno</button>
         </div>
         <div class="stats">
             <div class="xp-display">Lv.<span id="level">1</span> (XP:<span id="xp">0</span>)</div>
@@ -126,21 +27,12 @@
     <div id="winPopup"></div>
 
     <div class="container">
-
-        <div id="homePage" class="page">
+        <div id="homePage" class="page" style="display:block;">
             <h2>Welcome to Neon Casino</h2>
             <div class="control-group">
                 <h3>🎁 Daily Bonus</h3>
-                <p style="color:#94a3b8; font-size:0.9rem;">毎日ログインしてボーナスを受け取ろう！</p>
+                <p style="color:#94a3b8; font-size:0.9rem;">毎日ログインしてボーナスをゲット！</p>
                 <button id="claimBtn" class="action-btn" style="background:#a855f7;">Claim ¥500</button>
-            </div>
-            <div class="control-group">
-                <h3>🎫 Promo Code</h3>
-                <div class="promo-box">
-                    <input type="text" id="homePromoCode" placeholder="Enter code here...">
-                    <button id="homePromoBtn" class="promo-btn">Apply</button>
-                </div>
-                <div id="homePromoMsg" style="margin-top: 10px; font-weight: bold; font-size: 0.9rem;"></div>
             </div>
         </div>
 
@@ -150,12 +42,10 @@
                 <div id="barFill" class="dice-bar-fill" style="width: 50%;"></div>
                 <div id="pointer" class="dice-pointer" style="left: 50%;"></div>
             </div>
-            
             <div class="control-group" style="display: flex; justify-content: space-between; text-align: center;">
                 <div><label>Multiplier</label><strong id="payoutText">1.98</strong>x</div>
-                <div><label>Win Chance</label><strong id="chanceText">49.50</strong>%</div>
+                <div><label>Win Chance</label><strong id="chanceText">50.00</strong>%</div>
             </div>
-
             <div class="control-group">
                 <label>Win Chance (1-98%)</label>
                 <input type="range" id="chance" min="1" max="98" value="50">
@@ -169,20 +59,11 @@
 
         <div id="minesPage" class="page">
             <div style="text-align: center; margin-bottom: 10px;">
-                <span style="color:#94a3b8;">Current Multiplier: </span>
+                <span style="color:#94a3b8;">Multiplier: </span>
                 <strong style="color:#22c55e; font-size:1.5rem;" id="currentMult">1.00</strong>x
             </div>
-            <div id="minesGrid" class="mines-grid">
-                </div>
+            <div id="minesGrid" class="mines-grid"></div>
             <div class="control-group">
-                <label>Mines (1-24)</label>
-                <select id="mineCount">
-                    <option value="1">1 Mine</option>
-                    <option value="3" selected>3 Mines</option>
-                    <option value="5">5 Mines</option>
-                    <option value="10">10 Mines</option>
-                    <option value="24">24 Mines (Crazy)</option>
-                </select>
                 <label>Bet Amount (¥)</label>
                 <input type="number" id="minesBet" value="100" min="0">
             </div>
@@ -199,7 +80,7 @@
                 <input type="number" id="crashBet" value="100" min="0">
             </div>
             <button id="startCrashBtn" class="action-btn">Bet & Start</button>
-            <button id="crashCashoutBtn" class="action-btn cashout-btn" style="display:none;">Cashout</button>
+            <button id="crashCashoutBtn" class="action-btn cashout-btn" style="display:none; margin-top:10px;">Cashout</button>
         </div>
 
         <div id="limboPage" class="page">
@@ -223,31 +104,41 @@
                 <div id="wheelElement" class="wheel"></div>
             </div>
             <div class="control-group">
-                <label>Risk Level</label>
-                <select id="wheelRisk">
-                    <option value="low">Low (Safe)</option>
-                    <option value="medium">Medium</option>
-                    <option value="high" selected>High (Risky)</option>
-                </select>
-                <label>Segments</label>
-                <select id="wheelSegments">
-                    <option value="10" selected>10 Segments</option>
-                    <option value="50">50 Segments</option>
-                </select>
                 <label>Bet Amount (¥)</label>
                 <input type="number" id="wheelBet" value="100" min="0">
             </div>
             <button id="startWheelBtn" class="action-btn">Spin Wheel</button>
         </div>
 
-        <div class="history">
-            <h3>Recent Plays</h3>
-            <div id="historyList" class="history-list">
-                </div>
+        <div id="plinkoPage" class="page">
+            <div style="background: #0f172a; position: relative; width: 100%; height: 400px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #334155;">
+                <canvas id="plinkoCanvas" width="400" height="400" style="width: 100%; height: 100%;"></canvas>
+            </div>
+            <div class="control-group">
+                <label>Bet Amount (¥)</label>
+                <input type="number" id="plinkoBet" value="100" min="0">
+            </div>
+            <button id="startPlinkoBtn" class="action-btn" style="background:#ef4444;">Drop Ball</button>
         </div>
 
-    </div>
+        <div id="kenoPage" class="page">
+            <div style="text-align: center; margin-bottom: 10px;">
+                <span style="color:#94a3b8;">Matched: </span><strong id="kenoMatched" style="color:#eab308; font-size:1.5rem;">0</strong>
+                <span style="margin-left:15px; color:#94a3b8;">Payout: </span><strong id="kenoPayout" style="color:#22c55e; font-size:1.5rem;">0</strong>x
+            </div>
+            <div id="kenoGrid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 20px;"></div>
+            <div class="control-group">
+                <label>Bet Amount (¥)</label>
+                <input type="number" id="kenoBet" value="100" min="0">
+            </div>
+            <button id="startKenoBtn" class="action-btn" style="background:#10b981;">Play Keno</button>
+        </div>
 
+        <div class="history">
+            <h3>Recent Plays</h3>
+            <div id="historyList" class="history-list"></div>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>
